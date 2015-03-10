@@ -1,4 +1,4 @@
-# quotes
+# pebblekit-js-quotes
 
 ![screenshot](quotes-screenshot.png)
 
