@@ -11,11 +11,39 @@ static struct EntryUi {
   uint8_t index;
 
   char entry_name[30];
+#ifdef PBL_SDK_2
   InverterLayer *invert;
+#elif PBL_SDK_3
+  Layer *invert;
+#endif
 } ui;
 
 char *hs_name; // Pointer to put the name into.
 EntryCallback hs_callback;
+
+#ifdef PBL_SDK_3
+static void invert_draw_proc(Layer *layer, GContext *ctx) {
+  // Get framebuffer data
+  GBitmap *fb = graphics_capture_frame_buffer(ctx);
+  uint8_t *fb_data = gbitmap_get_data(fb);
+  GRect frame = layer_get_frame(layer);
+  int rsb = gbitmap_get_bytes_per_row(fb);
+
+  // Flip all black to white, and vice versa
+  for(int y = frame.origin.y; y < frame.origin.y + frame.size.h; y++) {
+    for(int x = frame.origin.x; x < frame.origin.x + frame.size.w; x++) {
+      if(fb_data[(y * rsb) + x] == GColorWhite.argb) {
+        memset(&fb_data[(y * rsb) + x], GColorBlack.argb, 1);
+      } else if(fb_data[(y * rsb) + x] == GColorBlack.argb) {
+        memset(&fb_data[(y * rsb) + x], GColorWhite.argb, 1);
+      }
+    }
+  }
+
+  // Return the framebuffer
+  graphics_release_frame_buffer(ctx, fb);
+}
+#endif
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   if (ui.index < 4) {
@@ -25,6 +53,9 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
       ++ui.entry_chars[ui.index][0];
     layer_mark_dirty(text_layer_get_layer(ui.chars_text[ui.index]));
   }
+#ifdef PBL_SDK_3
+  layer_mark_dirty(ui.invert);
+#endif
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -35,6 +66,9 @@ static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
       --ui.entry_chars[ui.index][0];
     layer_mark_dirty(text_layer_get_layer(ui.chars_text[ui.index]));
   }
+#ifdef PBL_SDK_3
+  layer_mark_dirty(ui.invert);
+#endif
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -43,13 +77,12 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   else
     ++ui.index;
 
-  inverter_layer_destroy(ui.invert);
-  ui.invert = inverter_layer_create((GRect) {
-        .origin = { 35 + 20 * ui.index, 66 },
-        .size = { 15, 31 }
-      });
-  layer_add_child(window_get_root_layer(ui.window),
-                  inverter_layer_get_layer(ui.invert));
+#ifdef PBL_SDK_2
+  layer_set_frame(inverter_layer_get_layer(ui.invert), GRect(35 + 20 * ui.index, 66, 15, 31));
+#elif PBL_SDK_3
+  layer_set_frame(ui.invert, GRect(35 + 20 * ui.index, 66, 15, 31));
+  layer_mark_dirty(ui.invert);
+#endif
 }
 
 static void select_long_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -59,6 +92,9 @@ static void select_long_click_handler(ClickRecognizerRef recognizer, void *conte
     ui.entry_chars[3][0] = '\0';
 
   layer_mark_dirty(text_layer_get_layer(ui.chars_text[ui.index]));
+#ifdef PBL_SDK_3
+  layer_mark_dirty(ui.invert);
+#endif
 }
 
 static void click_config_provider(void *context) {
@@ -74,9 +110,9 @@ static void window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
 
   ui.title_text = text_layer_create((GRect) {
-        .origin = { 0, 0 },
-        .size = { bounds.size.w, 64 }
-      });
+    .origin = { 0, 0 },
+    .size = { bounds.size.w, 64 }
+  }); 
   text_layer_set_text(ui.title_text, ui.entry_name);
   text_layer_set_text_alignment(ui.title_text, GTextAlignmentCenter);
   text_layer_set_font(ui.title_text,
@@ -97,11 +133,14 @@ static void window_load(Window *window) {
     layer_add_child(window_layer, text_layer_get_layer(ui.chars_text[i]));
   }
 
-  ui.invert = inverter_layer_create((GRect) {
-        .origin = { 35, 66 },
-        .size = { 16, 31 }
-      });
+#ifdef PBL_SDK_2
+  ui.invert = inverter_layer_create(GRect(35, 66, 16, 31));
   layer_add_child(window_layer, inverter_layer_get_layer(ui.invert));
+#elif PBL_SDK_3
+  ui.invert = layer_create(GRect(35, 66, 16, 31));
+  layer_set_update_proc(ui.invert, invert_draw_proc);
+  layer_add_child(window_layer, ui.invert);
+#endif
 }
 
 static void window_unload(Window *window) {
@@ -111,7 +150,11 @@ static void window_unload(Window *window) {
     text_layer_destroy(ui.chars_text[i]);
   }
   hs_name[4] = '\0';
+#ifdef PBL_SDK_2
   inverter_layer_destroy(ui.invert);
+#elif PBL_SDK_3
+  layer_destroy(ui.invert);
+#endif  
   hs_callback(hs_name);
 }
 

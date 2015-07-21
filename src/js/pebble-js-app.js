@@ -47,7 +47,7 @@ function fetchStockQuote(symbol, isInitMsg) {
 
 // Set callback for the app ready event
 Pebble.addEventListener("ready", function(e) {
-  console.log("connect! " + e.ready);
+  console.log("connect!");
   console.log(e.type);
   // Fetch saved symbol from local storage (using
   // standard localStorage webAPI)
