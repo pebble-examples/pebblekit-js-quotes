@@ -44,7 +44,7 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   }
 
   text_layer_set_text_color(s_chars_layers[s_selection_index], GColorWhite);
-  layer_set_frame(text_layer_get_layer(s_selection_layer), GRect(35 + (20 * s_selection_index), 66, 15, 31));
+  layer_set_frame(text_layer_get_layer(s_selection_layer), GRect(ENTRY_X_OFFSET + (20 * s_selection_index), 66, 15, 31));
 }
 
 static void select_long_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -69,20 +69,20 @@ static void window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
-  s_title_text = text_layer_create(GRect(0, 0, bounds.size.w, 64));
+  s_title_text = text_layer_create(GRect(0, 20, bounds.size.w, 64));
   text_layer_set_text(s_title_text, s_entry_name);
   text_layer_set_text_alignment(s_title_text, GTextAlignmentCenter);
   text_layer_set_font(s_title_text, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
   layer_add_child(window_layer, text_layer_get_layer(s_title_text));
 
-  s_selection_layer = text_layer_create(GRect(35, 66, 16, 31));
+  s_selection_layer = text_layer_create(GRect(ENTRY_X_OFFSET, 66, 16, 31));
   text_layer_set_background_color(s_selection_layer, GColorBlack);
   layer_add_child(window_layer, text_layer_get_layer(s_selection_layer));
 
   for (int col = 0; col < 4; col++) {
     strncpy(s_entry_chars[col], "A", 2);
 
-    s_chars_layers[col] = text_layer_create(GRect(35 + (20 * col), 64, 15, 50));
+    s_chars_layers[col] = text_layer_create(GRect(ENTRY_X_OFFSET + (20 * col), 64, 15, 50));
     text_layer_set_font(s_chars_layers[col], fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
     text_layer_set_text_alignment(s_chars_layers[col], GTextAlignmentCenter);
     text_layer_set_text(s_chars_layers[col], s_entry_chars[col]);
