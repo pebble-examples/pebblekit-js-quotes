@@ -1,5 +1,7 @@
 #pragma once
 
+#define ENTRY_NAME_LENGTH 32
+
 typedef void (*EntryCallback)(char *name);
 
 void entry_init(char *name);
