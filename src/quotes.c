@@ -60,13 +60,7 @@ static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reas
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
-  // refresh
-  text_layer_set_text(s_price_layer, "Loading...");
-  send_to_phone_multi(QuoteKeyFetch, NULL);
-}
-
-static void select_long_click_handler(ClickRecognizerRef recognizer, void *context) {
-  // refresh
+  // Enter new stocks symbol
   entry_get_name(s_symbol, entry_complete_handler);
   text_layer_set_text(s_symbol_layer, s_symbol);
   text_layer_set_text(s_price_layer, "Loading...");
@@ -74,7 +68,6 @@ static void select_long_click_handler(ClickRecognizerRef recognizer, void *conte
 
 static void click_config_provider(void *context) {
   window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
-  window_long_click_subscribe(BUTTON_ID_SELECT, 0, select_long_click_handler, NULL);
 }
 
 static void window_load(Window *window) {
