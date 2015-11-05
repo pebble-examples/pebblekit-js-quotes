@@ -7,71 +7,40 @@ static TextLayer *s_symbol_layer;
 static TextLayer *s_price_layer;
 static char s_symbol[5];
 static char s_price[10];
-static bool s_wasFirstMsg;
-static bool s_dataInited;
-static int s_refreshKey;
-static char *s_refreshSymbol;
 
-enum {
-  QUOTE_KEY_INIT = 0x0,
-  QUOTE_KEY_FETCH = 0x1,
-  QUOTE_KEY_SYMBOL = 0x2,
-  QUOTE_KEY_PRICE = 0x03,
-};
+typedef enum {
+  QuoteKeyInit = 0,
+  QuoteKeyFetch,
+  QuoteKeySymbol,
+  QuoteKeyPrice,
+} QuoteKey;
 
 static bool send_to_phone_multi(int quote_key, char *s_symbol) {
-  if ((quote_key == -1) && (s_symbol == NULL)) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "no data to send");
-    // well, the "nothing" that was sent to us was queued, anyway ...
-    return true;
-  }
-
   DictionaryIterator *iter;
   app_message_outbox_begin(&iter);
-  if (iter == NULL) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "null iter");
-    return false;
+
+  if(s_symbol) {
+    // We are sending the stocks symbol
+    dict_write_cstring(iter, quote_key, s_symbol);
+  } else {
+    // Some other request with no string data
+    const int dummy_val = 1;
+    dict_write_int(iter, quote_key, &dummy_val, sizeof(int), true);
   }
 
-  Tuplet tuple = (s_symbol == NULL)
-                      ? TupletInteger(quote_key, 1)
-                      : TupletCString(quote_key, s_symbol);
-  dict_write_tuplet(iter, &tuple);
   dict_write_end(iter);
-
   app_message_outbox_send();
   return true;
 }
 
-static void send_to_phone(int quote_key) {
-  bool queued = send_to_phone_multi(quote_key, NULL);
-  if (!queued && (s_refreshKey == -1) && (s_refreshSymbol == NULL)) {
-    s_refreshKey = quote_key;
-  }
-}
-
-static void set_symbol_msg(char *symbolName) {
-  bool queued = send_to_phone_multi(QUOTE_KEY_SYMBOL, symbolName);
-  if (!queued) {
-    s_refreshKey = QUOTE_KEY_SYMBOL;
-    s_refreshSymbol = symbolName;
-  }
+static void entry_complete_handler(char *symbolName) {
+  send_to_phone_multi(QuoteKeySymbol, symbolName);
 }
 
 static void in_received_handler(DictionaryIterator *iter, void *context) {
-  Tuple *init_tuple = dict_find(iter, QUOTE_KEY_INIT);
-  Tuple *symbol_tuple = dict_find(iter, QUOTE_KEY_SYMBOL);
-  Tuple *price_tuple = dict_find(iter, QUOTE_KEY_PRICE);
+  Tuple *symbol_tuple = dict_find(iter, QuoteKeySymbol);
+  Tuple *price_tuple = dict_find(iter, QuoteKeyPrice);
 
-  if (init_tuple) {
-    // only accept one initial tuple; the second may be a server reply to
-    // an out-of-date action on our part
-    if (s_dataInited) {
-      return;
-    } else {
-      s_dataInited = true;
-    }
-  }
   if (symbol_tuple) {
     strncpy(s_symbol, symbol_tuple->value->cstring, 5);
     text_layer_set_text(s_symbol_layer, s_symbol);
@@ -87,31 +56,18 @@ static void in_dropped_handler(AppMessageResult reason, void *context) {
 }
 
 static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
-  if (s_wasFirstMsg && s_dataInited) {
-    // Ignore, was successful
-  } else {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Failed to Send!");
-  }
-
-  s_wasFirstMsg = false;
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Failed to Send!");
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
-  // refresh
-  text_layer_set_text(s_price_layer, "Loading...");
-  send_to_phone(QUOTE_KEY_FETCH);
-}
-
-static void select_long_click_handler(ClickRecognizerRef recognizer, void *context) {
-  // refresh
-  entry_get_name(s_symbol, set_symbol_msg);
+  // Enter new stocks symbol
+  entry_get_name(s_symbol, entry_complete_handler);
   text_layer_set_text(s_symbol_layer, s_symbol);
   text_layer_set_text(s_price_layer, "Loading...");
 }
 
 static void click_config_provider(void *context) {
   window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
-  window_long_click_subscribe(BUTTON_ID_SELECT, 0, select_long_click_handler, NULL);
 }
 
 static void window_load(Window *window) {
@@ -130,8 +86,7 @@ static void window_load(Window *window) {
   text_layer_set_font(s_price_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28));
   layer_add_child(window_layer, text_layer_get_layer(s_price_layer));
 
-  send_to_phone(QUOTE_KEY_INIT);
-  s_wasFirstMsg = true;
+  send_to_phone_multi(QuoteKeyInit, NULL);
 }
 
 static void window_unload(Window *window) {
@@ -140,9 +95,6 @@ static void window_unload(Window *window) {
 }
 
 static void init(void) {
-  s_refreshKey = -1;
-  s_refreshSymbol = NULL;
-
   // Register message handlers
   app_message_register_inbox_received(in_received_handler);
   app_message_register_inbox_dropped(in_dropped_handler);
@@ -151,8 +103,7 @@ static void init(void) {
   // Init buffers
   app_message_open(64, 64);
 
-  char entry_title[] = "Enter Symbol";
-  entry_init(entry_title);
+  entry_init("Enter Symbol");
 
   s_main_window = window_create();
   window_set_click_config_provider(s_main_window, click_config_provider);

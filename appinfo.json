@@ -9,17 +9,18 @@
     "watchface": false
   },
   "appKeys": {
-    "init": 0,
-    "fetch": 1,
-    "symbol": 2,
-    "price": 3
+    "QuoteKeyInit": 0,
+    "QuoteKeyFetch": 1,
+    "QuoteKeySymbol": 2,
+    "QuoteKeyPrice": 3
   },
   "resources": {
     "media": []
   },
   "targetPlatforms": [
     "aplite",
-    "basalt"
+    "basalt",
+    "chalk"
   ],
   "sdkVersion": "3"
 }
