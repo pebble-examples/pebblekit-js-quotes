@@ -3,17 +3,17 @@
 #include "entry.h"
 
 static Window *s_window;
-static TextLayer *s_title_text, *s_chars_layers[4];
+static TextLayer *s_title_text, *s_chars_layers[ENTRY_NUM_CHARS];
 static TextLayer *s_selection_layer;
 
 static EntryCallback s_callback;
 static char *s_name; // Pointer to put the name into.
 static char s_entry_name[ENTRY_NAME_LENGTH];
-static char s_entry_chars[4][2];
+static char s_entry_chars[ENTRY_NUM_CHARS][2];
 static uint8_t s_selection_index;
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (s_selection_index < 4) {
+  if (s_selection_index < ENTRY_NUM_CHARS) {
     if (s_entry_chars[s_selection_index][0] == 'Z') {
       s_entry_chars[s_selection_index][0] = 'A';
     } else {
@@ -24,7 +24,7 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (s_selection_index < 4) {
+  if (s_selection_index < ENTRY_NUM_CHARS) {
     if (s_entry_chars[s_selection_index][0] == 'A') {
       s_entry_chars[s_selection_index][0] = 'Z';
     } else {
@@ -79,7 +79,7 @@ static void window_load(Window *window) {
   text_layer_set_background_color(s_selection_layer, GColorBlack);
   layer_add_child(window_layer, text_layer_get_layer(s_selection_layer));
 
-  for (int col = 0; col < 4; col++) {
+  for (int col = 0; col < ENTRY_NUM_CHARS; col++) {
     strncpy(s_entry_chars[col], "A", 2);
 
     s_chars_layers[col] = text_layer_create(GRect(ENTRY_X_OFFSET + (20 * col), 64, 15, 50));
@@ -96,14 +96,14 @@ static void window_load(Window *window) {
 
 static void window_unload(Window *window) {
   text_layer_destroy(s_title_text);
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < ENTRY_NUM_CHARS; i++) {
     s_name[i] = s_entry_chars[i][0];
     text_layer_destroy(s_chars_layers[i]);
   }
   text_layer_destroy(s_selection_layer);
 
   // NULL-terminate the string and return
-  s_name[4] = '\0';
+  s_name[ENTRY_NUM_CHARS] = '\0';
   s_callback(s_name);
 }
 
